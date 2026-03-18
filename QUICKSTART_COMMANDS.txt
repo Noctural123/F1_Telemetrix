@@ -1,0 +1,82 @@
+# F1 Telemetrix - Quick Start Commands and Notes
+
+Project root:
+..\F1_Telemetrix
+
+------------------------------------------------------------
+1) One-time setup (recommended)
+------------------------------------------------------------
+
+# Create virtual environment
+py -m venv .venv
+
+# Activate venv (PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# If PowerShell blocks activation scripts:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+python -m pip install -r requirements.txt
+
+------------------------------------------------------------
+2) Run the app
+------------------------------------------------------------
+
+# Race replay
+python main.py --year 2025 --round 12
+
+# Sprint race replay
+python main.py --year 2025 --round 12 --sprint
+
+# Qualifying replay
+python main.py --year 2025 --round 12 --qualifying
+
+# Sprint qualifying replay
+python main.py --year 2025 --round 12 --sprint-qualifying
+
+# Force telemetry recompute (ignores saved computed_data cache)
+python main.py --year 2025 --round 12 --refresh-data
+
+------------------------------------------------------------
+3) Discover race rounds
+------------------------------------------------------------
+
+# List all rounds for a year
+python main.py --year 2025 --list-rounds
+
+# List rounds that include sprint sessions
+python main.py --year 2025 --list-sprints
+
+------------------------------------------------------------
+4) Useful notes for new users
+------------------------------------------------------------
+
+- First run can take longer because FastF1 downloads and processes data.
+- The app opens a desktop graphics window (Arcade), not a browser tab.
+- Cache/data folders are created automatically:
+  - .fastf1-cache/
+  - computed_data/
+- If replay data seems stale, rerun with --refresh-data.
+- If keyboard controls seem unresponsive, click the replay window first.
+
+------------------------------------------------------------
+5) In-app controls (race replay)
+------------------------------------------------------------
+
+- SPACE: Pause / Resume
+- LEFT / RIGHT: Rewind / Fast-forward
+- UP / DOWN: Increase / decrease playback speed
+- 1 / 2 / 3 / 4: Set speed (0.5x / 1x / 2x / 4x)
+- R: Restart replay
+- D: Toggle DRS zones
+- B: Toggle progress bar
+
+------------------------------------------------------------
+6) End your session
+------------------------------------------------------------
+
+# Deactivate virtual environment
+deactivate
+
