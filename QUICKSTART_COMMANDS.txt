@@ -25,7 +25,7 @@ python -m pip install -r requirements.txt
 ------------------------------------------------------------
 
 # Race replay
-python main.py --year 2025 --round 12
+python main.py --year 2025 --round 12 // Or any round that you may like to see
 
 # Sprint race replay
 python main.py --year 2025 --round 12 --sprint
@@ -38,6 +38,15 @@ python main.py --year 2025 --round 12 --sprint-qualifying
 
 # Force telemetry recompute (ignores saved computed_data cache)
 python main.py --year 2025 --round 12 --refresh-data
+
+# Security demo (CAN baseline + attack simulation overlay)
+python main.py --year 2025 --round 12 --security-demo
+
+# Security demo with fuzzing attack
+python main.py --year 2025 --round 12 --security-demo --attack-fuzzing
+
+# Security demo targeting a specific driver code (example: VER)
+python main.py --year 2025 --round 12 --security-demo --attack-target VER
 
 ------------------------------------------------------------
 3) Discover race rounds
@@ -72,6 +81,7 @@ python main.py --year 2025 --list-sprints
 - R: Restart replay
 - D: Toggle DRS zones
 - B: Toggle progress bar
+- TAB: Switch between Telemetry and Attacks tabs (security demo mode)
 
 ------------------------------------------------------------
 6) End your session

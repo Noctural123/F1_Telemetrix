@@ -116,6 +116,62 @@ class WeatherComponent(BaseComponent):
         # Track the bottom of the weather panel so info boxes can stack below it
         window.weather_bottom = last_y - 20
 
+class SecurityPanelComponent(BaseComponent):
+    def __init__(self, left=20, width=300, height=170, top_offset=330):
+        self.left = left
+        self.width = width
+        self.height = height
+        self.top_offset = top_offset
+        self.info = None
+
+    def set_info(self, info: Optional[dict]):
+        self.info = info
+
+    def draw(self, window):
+        if not self.info:
+            return
+
+        panel_top = window.height - self.top_offset
+        center_x = self.left + self.width / 2
+        center_y = panel_top - self.height / 2
+
+        arcade.draw_rect_filled(
+            arcade.XYWH(center_x, center_y, self.width, self.height),
+            (20, 20, 20, 220),
+        )
+        arcade.draw_rect_outline(
+            arcade.XYWH(center_x, center_y, self.width, self.height),
+            arcade.color.DARK_RED,
+            2,
+        )
+
+        attack_active = bool(self.info.get("attack_active"))
+        status_color = arcade.color.RED if attack_active else arcade.color.LIGHT_GRAY
+        status_text = "ACTIVE" if attack_active else "IDLE"
+        bus_totals = self.info.get("bus_totals", {})
+        attack_id = self.info.get("dominant_attack_id")
+        attack_id_text = hex(attack_id) if attack_id is not None else "N/A"
+
+        lines = [
+            ("Security Monitor", arcade.color.WHITE, 18, True),
+            (f"Attack: {self.info.get('attack_type', 'N/A')}", arcade.color.LIGHT_GRAY, 14, False),
+            (f"Target Car: {self.info.get('target_driver', 'N/A')}", arcade.color.LIGHT_GRAY, 14, False),
+            (f"Status: {status_text}", status_color, 14, True),
+            (f"CAN ID: {attack_id_text}", arcade.color.LIGHT_GRAY, 14, False),
+            (
+                f"Msg/s S:{bus_totals.get('sensor_bus',0)} D:{bus_totals.get('display_bus',0)} P:{bus_totals.get('powertrain_bus',0)}",
+                arcade.color.LIGHT_GRAY,
+                12,
+                False,
+            ),
+            (f"Attack Msg/s: {self.info.get('attack_messages', 0)}", arcade.color.LIGHT_GRAY, 12, False),
+        ]
+
+        y = panel_top - 14
+        for text, color, size, bold in lines:
+            arcade.Text(text, self.left + 10, y, color, size, bold=bold, anchor_y="top").draw()
+            y -= 23 if size >= 14 else 20
+
 class LeaderboardComponent(BaseComponent):
     def __init__(self, x: int, right_margin: int = 260, width: int = 240):
         self.x = x

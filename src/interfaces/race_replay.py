@@ -5,6 +5,7 @@ from src.f1_data import FPS
 from src.ui_components import (
     LeaderboardComponent, 
     WeatherComponent, 
+    SecurityPanelComponent,
     LegendComponent, 
     DriverInfoComponent, 
     RaceProgressBarComponent,
@@ -21,7 +22,8 @@ SCREEN_TITLE = "F1 Race Replay"
 class F1RaceReplayWindow(arcade.Window):
     def __init__(self, frames, track_statuses, example_lap, drivers, title,
                  playback_speed=1.0, driver_colors=None, circuit_rotation=0.0,
-                 left_ui_margin=340, right_ui_margin=260, total_laps=None):
+                 left_ui_margin=340, right_ui_margin=260, total_laps=None,
+                 security_overlay=None):
         # Set resizable to True so the user can adjust mid-sim
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, title, resizable=True)
 
@@ -35,6 +37,9 @@ class F1RaceReplayWindow(arcade.Window):
         self.paused = False
         self.total_laps = total_laps
         self.has_weather = any("weather" in frame for frame in frames) if frames else False
+        self.security_overlay = security_overlay or []
+        self.has_security_tab = len(self.security_overlay) > 0
+        self.view_mode = "telemetry"
 
         # Rotation (degrees) to apply to the whole circuit around its centre
         self.circuit_rotation = circuit_rotation
@@ -49,6 +54,7 @@ class F1RaceReplayWindow(arcade.Window):
         leaderboard_x = max(20, self.width - self.right_ui_margin + 12)
         self.leaderboard_comp = LeaderboardComponent(x=leaderboard_x, width=240)
         self.weather_comp = WeatherComponent(left=20, top_offset=170)
+        self.security_comp = SecurityPanelComponent(left=20, top_offset=330)
         self.legend_comp = LegendComponent(x=max(12, self.left_ui_margin - 320))
         self.driver_info_comp = DriverInfoComponent(left=20, width=300)
         
@@ -119,6 +125,8 @@ class F1RaceReplayWindow(arcade.Window):
         # Selection & hit-testing state for leaderboard
         self.selected_driver = None
         self.leaderboard_rects = []  # list of tuples: (code, left, bottom, right, top)
+        self.telemetry_tab_rect = None
+        self.attacks_tab_rect = None
 
     def _interpolate_points(self, xs, ys, interp_points=2000):
         t_old = np.linspace(0, 1, len(xs))
@@ -317,9 +325,24 @@ class F1RaceReplayWindow(arcade.Window):
 
         # 3. Draw Cars
         frame = self.frames[idx]
+        security_frame = None
+        use_attacks_view = self.has_security_tab and self.view_mode == "attacks"
+        if use_attacks_view and idx < len(self.security_overlay):
+            security_frame = self.security_overlay[idx]
+
+        attack_active = bool(security_frame and security_frame.get("attack_active"))
+        target_driver = security_frame.get("target_driver") if security_frame else None
+        blink_on = (idx // 10) % 2 == 0
+
         for code, pos in frame["drivers"].items():
             sx, sy = self.world_to_screen(pos["x"], pos["y"])
-            color = self.driver_colors.get(code, arcade.color.WHITE)
+            # Security mode color scheme: all cars grey, attacked target blinks red.
+            if use_attacks_view:
+                color = (120, 120, 120)
+                if attack_active and code == target_driver and blink_on:
+                    color = arcade.color.RED
+            else:
+                color = self.driver_colors.get(code, arcade.color.WHITE)
             arcade.draw_circle_filled(sx, sy, 6, color)
         
         # --- UI ELEMENTS (Dynamic Positioning) ---
@@ -396,6 +419,40 @@ class F1RaceReplayWindow(arcade.Window):
         weather_info = frame.get("weather") if frame else None
         self.weather_comp.set_info(weather_info)
         self.weather_comp.draw(self)
+        self.security_comp.set_info(security_frame if use_attacks_view else None)
+        self.security_comp.draw(self)
+        if self.has_security_tab:
+            tab_y = self.height - 35
+            tab_w = 150
+            tab_h = 34
+            gap = 8
+            start_x = (self.width / 2) - tab_w - (gap / 2)
+
+            self.telemetry_tab_rect = (
+                start_x,
+                tab_y - tab_h / 2,
+                start_x + tab_w,
+                tab_y + tab_h / 2,
+            )
+            self.attacks_tab_rect = (
+                start_x + tab_w + gap,
+                tab_y - tab_h / 2,
+                start_x + (2 * tab_w) + gap,
+                tab_y + tab_h / 2,
+            )
+
+            def _draw_tab(rect, label, active):
+                left, bottom, right, top = rect
+                cx = (left + right) / 2
+                cy = (bottom + top) / 2
+                fill = (65, 65, 65, 230) if active else (35, 35, 35, 200)
+                border = arcade.color.WHITE if active else arcade.color.GRAY
+                arcade.draw_rect_filled(arcade.XYWH(cx, cy, right - left, top - bottom), fill)
+                arcade.draw_rect_outline(arcade.XYWH(cx, cy, right - left, top - bottom), border, 2)
+                arcade.Text(label, cx, cy, arcade.color.WHITE, 12, bold=active, anchor_x="center", anchor_y="center").draw()
+
+            _draw_tab(self.telemetry_tab_rect, "Telemetry", self.view_mode == "telemetry")
+            _draw_tab(self.attacks_tab_rect, "Attacks", self.view_mode == "attacks")
         # optionally expose weather_bottom for driver info layout
         self.weather_bottom = self.height - 170 - 130 if (weather_info or self.has_weather) else None
 
@@ -525,8 +582,22 @@ class F1RaceReplayWindow(arcade.Window):
             self.toggle_drs_zones = not self.toggle_drs_zones
         elif symbol == arcade.key.B:
             self.progress_bar_comp.toggle_visibility() # toggle progress bar visibility
+        elif symbol == arcade.key.TAB and self.has_security_tab:
+            self.view_mode = "attacks" if self.view_mode == "telemetry" else "telemetry"
 
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
+        if self.has_security_tab:
+            if self.telemetry_tab_rect:
+                l, b, r, t = self.telemetry_tab_rect
+                if l <= x <= r and b <= y <= t:
+                    self.view_mode = "telemetry"
+                    return
+            if self.attacks_tab_rect:
+                l, b, r, t = self.attacks_tab_rect
+                if l <= x <= r and b <= y <= t:
+                    self.view_mode = "attacks"
+                    return
+
         # forward to components; stop at first that handled it
         if self.race_controls_comp.on_mouse_press(self, x, y, button, modifiers):
             return

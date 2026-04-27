@@ -1,5 +1,6 @@
 from src.f1_data import get_race_telemetry, enable_cache, get_circuit_rotation, load_session, get_quali_telemetry, list_rounds, list_sprints
 from src.arcade_replay import run_arcade_replay
+from src.can_security import build_security_overlay
 
 from src.interfaces.qualifying import run_qualifying_replay
 import sys
@@ -72,6 +73,23 @@ def main(year=None, round_number=None, playback_speed=1, session_type='R'):
 
     # Check for optional chart flag
     chart = "--chart" in sys.argv
+    security_demo = "--security-demo" in sys.argv
+    attack_type = "fuzzing" if "--attack-fuzzing" in sys.argv else "injection"
+    attack_target = None
+    if "--attack-target" in sys.argv:
+        target_index = sys.argv.index("--attack-target") + 1
+        if target_index < len(sys.argv):
+            attack_target = sys.argv[target_index].upper()
+    security_overlay = None
+    if security_demo:
+        print(f"Security demo enabled ({attack_type}).")
+        security_overlay = build_security_overlay(
+            race_telemetry["frames"],
+            attack_type=attack_type,
+            target_driver=attack_target,
+            attack_start_s=20.0,
+            attack_duration_s=20.0,
+        )
 
     run_arcade_replay(
         frames=race_telemetry['frames'],
@@ -84,6 +102,7 @@ def main(year=None, round_number=None, playback_speed=1, session_type='R'):
         total_laps=race_telemetry['total_laps'],
         circuit_rotation=circuit_rotation,
         chart=chart,
+        security_overlay=security_overlay,
     )
 
 if __name__ == "__main__":

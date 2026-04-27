@@ -13,6 +13,7 @@ A Python application for visualizing Formula 1 race telemetry and replaying race
 - **Interactive Controls:** Pause, rewind, fast forward, and adjust playback speed using on-screen buttons or keyboard shortcuts.
 - **Legend:** On-screen legend explains all controls.
 - **Driver Telemetry Insights:** View speed, gear, DRS status, and current lap for selected drivers when selected on the leaderboard.
+- **Security Demo Mode:** Simulate CAN bus traffic with attack overlays (injection/fuzzing) in the replay UI.
 
 ## Controls
 
@@ -54,6 +55,23 @@ python main.py --year 2025 --round 12 --sprint
 The application will load a pre-computed telemetry dataset if you have run it before for the same event. To force re-computation of telemetry data, use the `--refresh-data` flag:
 ```bash
 python main.py --year 2025 --round 12 --refresh-data
+```
+
+### Security Demo (CAN + attacks)
+
+Run with security overlay enabled:
+```bash
+python main.py --year 2025 --round 12 --security-demo
+```
+
+Use fuzzing attack mode:
+```bash
+python main.py --year 2025 --round 12 --security-demo --attack-fuzzing
+```
+
+Target a specific driver code:
+```bash
+python main.py --year 2025 --round 12 --security-demo --attack-target VER
 ```
 
 ### Search Round Numbers (including Sprints)
