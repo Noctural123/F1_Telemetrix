@@ -335,7 +335,9 @@ class F1RaceReplayWindow(arcade.Window):
         blink_on = (idx // 10) % 2 == 0
 
         for code, pos in frame["drivers"].items():
-            sx, sy = self.world_to_screen(pos["x"], pos["y"])
+            car_x = pos["x"]
+            car_y = pos["y"]
+            sx, sy = self.world_to_screen(car_x, car_y)
             # Security mode color scheme: all cars grey, attacked target blinks red.
             if use_attacks_view:
                 color = (120, 120, 120)
