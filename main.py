@@ -1,6 +1,6 @@
 from src.f1_data import get_race_telemetry, enable_cache, get_circuit_rotation, load_session, get_quali_telemetry, list_rounds, list_sprints
 from src.arcade_replay import run_arcade_replay
-from src.can_security import build_security_overlay
+from src.can_security import build_security_overlay, run_full_ml_pipeline_from_frames
 
 from src.interfaces.qualifying import run_qualifying_replay
 import sys
@@ -90,6 +90,18 @@ def main(year=None, round_number=None, playback_speed=1, session_type='R'):
             attack_start_s=20.0,
             attack_duration_s=20.0,
         )
+        if "--ml-eval" in sys.argv:
+            print("Running ML IDS evaluation pipeline...")
+            outputs = run_full_ml_pipeline_from_frames(
+                race_telemetry["frames"],
+                attack_type=attack_type,
+                target_driver=attack_target,
+                attack_start_s=20.0,
+                attack_duration_s=20.0,
+            )
+            print(f"ML combined log: {outputs['combined_log_path']}")
+            print(f"ML report: {outputs['simulation_report_path']}")
+            print(f"ML alerts: {outputs['alerts_log_path']}")
 
     run_arcade_replay(
         frames=race_telemetry['frames'],

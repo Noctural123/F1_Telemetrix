@@ -48,6 +48,9 @@ python main.py --year 2025 --round 12 --security-demo --attack-fuzzing
 # Security demo targeting a specific driver code (example: VER)
 python main.py --year 2025 --round 12 --security-demo --attack-target VER
 
+# Security demo + ML IDS (Isolation Forest + Random Forest evaluation)
+python main.py --year 2025 --round 12 --security-demo --ml-eval
+
 ------------------------------------------------------------
 3) Discover race rounds
 ------------------------------------------------------------

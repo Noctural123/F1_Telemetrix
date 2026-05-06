@@ -9,3 +9,5 @@ matplotlib
 numpy
 arcade
 pyglet
+scikit-learn
+joblib
