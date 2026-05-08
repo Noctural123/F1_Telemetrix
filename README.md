@@ -74,6 +74,57 @@ Target a specific driver code:
 python main.py --year 2025 --round 12 --security-demo --attack-target VER
 ```
 
+### Hybrid Intrusion Detection (Rule-Based + Isolation Forest + Random Forest)
+
+The security demo can be paired with a three-layer Intrusion Detection System
+(IDS) that runs on the simulated CAN traffic:
+
+1. **Rule-Based IDS** (`src/can_security/rule_based_ids.py`) — per-frame checks:
+   whitelist of known arbitration IDs, per-signal payload bounds (e.g. speed
+   in `[0, 360]` km/h), and a per-arb_id frequency rule against the observed
+   baseline.
+2. **Isolation Forest** (Layer 1, `src/can_security/ml_ids.py`) — unsupervised
+   per-bus streaming anomaly detector. Phase is driven by the frame timestamp
+   (not wall clock), trains after a `baseline_seconds` window once
+   `min_training_samples` are buffered, then batch-scores frames and emits
+   alerts when `decision_function(x) < anomaly_threshold`.
+3. **Random Forest** (Layer 2, `src/can_security/ml_ids.py`) — supervised
+   post-simulation classifier over the labeled CAN log. The single-run path
+   does an in-run train/test split for quick feedback; the cross-run path
+   (`--ml-cross-run-eval`) trains on `N-1` simulation runs and evaluates on a
+   held-out run for an honest test-set estimate.
+
+The pipeline anchors three contiguous, full-density windows around the attack
+so the streaming layers see consistent message rates and the IF FP rate is
+measured against temporally-adjacent normal traffic (not the entire 90-minute
+race, where natural feature drift would inflate it):
+
+- baseline window  `[attack_start - baseline_seconds, attack_start)`
+- attack window    `[attack_start, attack_start + attack_duration]`
+- post-attack      `(attack_end, attack_end + post_attack_window]`
+
+Run a single ML evaluation against real F1 race telemetry:
+```bash
+python main.py --year 2024 --round 1 --security-demo --ml-eval --ml-only
+```
+
+Recommended honest-evaluation command (mid-race attack so the IF baseline is
+representative racing data, plus held-out cross-run RF):
+```bash
+python main.py --year 2024 --round 1 --security-demo --ml-eval --ml-only \
+    --ml-attack-start 600 --ml-batch-runs 5 --ml-cross-run-eval
+```
+
+Each run writes a self-contained directory under
+`computed_data/can_security_ml/runs/<timestamp>_<attack>_run_NNN/` with:
+
+- `combined_frame_log.csv` — all simulated CAN messages with ground-truth labels
+- `simulation_report.json` — per-class rule-based recall, IF recall, RF metrics
+- `ml_alerts.log` — JSON-lines log of every IF detection
+- `models/random_forest.pkl` — trained RF model
+
+See `QUICKSTART_COMMANDS.txt` for the full list of `--ml-*` tuning flags.
+
 ### Search Round Numbers (including Sprints)
 
 To find the round number for a specific Grand Prix event, you can use the `--list-rounds` flag along with the year to return a list of events and their corresponding round numbers:

@@ -4,7 +4,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from .ml_ids import MLIDS
+from .ml_ids import MLIDS, evaluate_random_forest_cross_run
+from .rule_based_ids import RuleBasedIDS
 from .run_simulation import run_full_ml_pipeline_from_frames, run_ml_evaluation_phase
 
 _legacy_path = Path(__file__).resolve().parent.parent / "can_security.py"
@@ -22,7 +23,9 @@ build_security_overlay = _legacy_module.build_security_overlay
 __all__ = [
     "CANMessage",
     "MLIDS",
+    "RuleBasedIDS",
     "build_security_overlay",
+    "evaluate_random_forest_cross_run",
     "run_ml_evaluation_phase",
     "run_full_ml_pipeline_from_frames",
 ]

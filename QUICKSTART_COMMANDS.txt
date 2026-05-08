@@ -24,8 +24,10 @@ python -m pip install -r requirements.txt
 2) Run the app
 ------------------------------------------------------------
 
+# Defaults if --year / --round are omitted: year=2025, round=12
+
 # Race replay
-python main.py --year 2025 --round 12 // Or any round that you may like to see
+python main.py --year 2025 --round 12   # or any round you want to see
 
 # Sprint race replay
 python main.py --year 2025 --round 12 --sprint
@@ -36,20 +38,75 @@ python main.py --year 2025 --round 12 --qualifying
 # Sprint qualifying replay
 python main.py --year 2025 --round 12 --sprint-qualifying
 
-# Force telemetry recompute (ignores saved computed_data cache)
+# Force telemetry recompute (ignores saved computed_data + .fastf1-cache)
 python main.py --year 2025 --round 12 --refresh-data
 
-# Security demo (CAN baseline + attack simulation overlay)
+=================================
+Security / IDS demo
+=================================
+
+# Security demo (CAN baseline + attack simulation overlay on race replay)
 python main.py --year 2025 --round 12 --security-demo
 
-# Security demo with fuzzing attack
+# Security demo with fuzzing attack (default attack type is injection)
 python main.py --year 2025 --round 12 --security-demo --attack-fuzzing
 
 # Security demo targeting a specific driver code (example: VER)
 python main.py --year 2025 --round 12 --security-demo --attack-target VER
 
-# Security demo + ML IDS (Isolation Forest + Random Forest evaluation)
+# Security demo + Hybrid IDS (Rule-Based + Isolation Forest + Random Forest)
 python main.py --year 2025 --round 12 --security-demo --ml-eval
+
+# ML-only batch mode (no replay window). Requires --security-demo --ml-eval.
+# Each run is saved under computed_data/can_security_ml/runs/<timestamp>_<attack>_run_NNN/
+python main.py --year 2025 --round 12 --security-demo --ml-eval --ml-only --ml-batch-runs 10
+
+# Faster ML preset (smaller frame cap, fewer trees, 8 drivers)
+python main.py --year 2025 --round 12 --security-demo --ml-eval --ml-only --ml-fast
+
+# Fast 10-batch run (optimized for speed)
+python main.py --year 2025 --round 12 --security-demo --ml-eval --ml-only --ml-fast --ml-batch-runs 10
+
+# Honest cross-run RF evaluation: trains on the first ~80% of the batch,
+# tests on the held-out ~20%. Requires --ml-batch-runs >= 2.
+python main.py --year 2025 --round 12 --security-demo --ml-eval --ml-only --ml-batch-runs 10 --ml-cross-run-eval
+
+# Recommended for an honest demo against real F1 race telemetry
+# (mid-race attack so the IF baseline is representative racing data,
+#  cross-run RF so the RF confidence is not inflated by same-run train/test):
+python main.py --year 2024 --round 1 --security-demo --ml-eval --ml-only --ml-attack-start 600 --ml-batch-runs 5 --ml-cross-run-eval
+
+# Tune the Isolation Forest layer (tighter threshold trades recall for precision)
+python main.py --year 2025 --round 12 --security-demo --ml-eval --ml-only --ml-contamination 0.15 --ml-anomaly-threshold -0.15
+
+# Tune the baseline / post-attack control windows
+python main.py --year 2025 --round 12 --security-demo --ml-eval --ml-only --ml-baseline-seconds 90 --ml-post-attack-window 60 --ml-injection-count 8
+
+# PowerShell tip: backslash (\) is bash line-continuation and will NOT work here.
+# Either keep each command on a single line (as above) or use a backtick (`) at
+# the end of the line for PowerShell line continuation, e.g.:
+#   python main.py --year 2024 --round 1 --security-demo --ml-eval --ml-only `
+#       --ml-attack-start 600 --ml-batch-runs 5 --ml-cross-run-eval
+
+# Available ML knobs:
+#   --ml-batch-runs N           number of independent simulation runs
+#   --ml-cross-run-eval         held-out cross-run RF evaluation (needs >= 2 runs)
+#   --ml-fast                   fast preset (8 drivers, lighter models)
+#   --ml-max-frames N           cap on sampled frames per run (mostly informational
+#                               with the attack-anchored sampler)
+#   --ml-max-drivers N          cap on simulated drivers per run
+#   --ml-if-estimators N        Isolation Forest tree count
+#   --ml-rf-estimators N        Random Forest tree count
+#   --ml-contamination F        Isolation Forest contamination (0.001 - 0.5)
+#   --ml-anomaly-threshold F    decision_function threshold for IF alerts
+#   --ml-min-train N            min samples buffered before IF trains
+#   --ml-baseline-seconds F     baseline window length (default: auto-sized to
+#                               cover all pre-attack telemetry)
+#   --ml-attack-start F         when the attack starts (s of telemetry, default 20)
+#   --ml-attack-duration F      attack duration in seconds (default 20)
+#   --ml-post-attack-window F   post-attack control window for FP measurement
+#                               (auto: max(60, attack_duration))
+#   --ml-injection-count N      number of injection messages per attack frame
 
 ------------------------------------------------------------
 3) Discover race rounds
@@ -68,23 +125,38 @@ python main.py --year 2025 --list-sprints
 - First run can take longer because FastF1 downloads and processes data.
 - The app opens a desktop graphics window (Arcade), not a browser tab.
 - Cache/data folders are created automatically:
-  - .fastf1-cache/
-  - computed_data/
+  - .fastf1-cache/         (raw FastF1 download cache)
+  - computed_data/         (processed telemetry + ML run outputs)
 - If replay data seems stale, rerun with --refresh-data.
 - If keyboard controls seem unresponsive, click the replay window first.
+- --ml-only requires --security-demo --ml-eval; without --ml-only the ML
+  pipeline runs and then the Arcade replay window still opens afterwards.
 
 ------------------------------------------------------------
-5) In-app controls (race replay)
+5a) In-app controls (race replay)
 ------------------------------------------------------------
 
-- SPACE: Pause / Resume
-- LEFT / RIGHT: Rewind / Fast-forward
-- UP / DOWN: Increase / decrease playback speed
-- 1 / 2 / 3 / 4: Set speed (0.5x / 1x / 2x / 4x)
-- R: Restart replay
-- D: Toggle DRS zones
-- B: Toggle progress bar
-- TAB: Switch between Telemetry and Attacks tabs (security demo mode)
+- SPACE          Pause / Resume
+- LEFT / RIGHT   Rewind / Fast-forward (~10 frames)
+- UP / DOWN      Double / halve playback speed
+- 1 / 2 / 3 / 4  Set speed (0.5x / 1x / 2x / 4x)
+- R              Restart replay (also resets speed to 1x)
+- D              Toggle DRS zones
+- B              Toggle progress bar
+- TAB            Switch between Telemetry and Attacks tabs
+                 (security demo mode only)
+
+------------------------------------------------------------
+5b) In-app controls (qualifying / sprint qualifying replay)
+------------------------------------------------------------
+
+- SPACE          Pause / Resume
+- LEFT / RIGHT   Rewind / Fast-forward (~10 frames)
+- UP / DOWN      Double / halve playback speed
+- 1 / 2 / 3 / 4  Set speed (0.5x / 1x / 2x / 4x)
+- R              Restart current lap (resets speed to 1x, paused)
+- C              Toggle comparison driver telemetry overlay
+- D              Toggle DRS zones on track map
 
 ------------------------------------------------------------
 6) End your session
@@ -92,4 +164,3 @@ python main.py --year 2025 --list-sprints
 
 # Deactivate virtual environment
 deactivate
-
