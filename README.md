@@ -49,8 +49,9 @@ python main.py --year 2025 --round 12
 ```
 
 ### Sprint race
+Sprint sessions only exist on certain rounds — use `--list-sprints` to see them.
 ```bash
-python main.py --year 2025 --round 12 --sprint
+python main.py --year 2025 --round 13 --sprint
 ```
 
 ### Qualifying
@@ -60,7 +61,7 @@ python main.py --year 2025 --round 12 --qualifying
 
 ### Sprint qualifying
 ```bash
-python main.py --year 2025 --round 12 --sprint-qualifying
+python main.py --year 2025 --round 13 --sprint-qualifying
 ```
 
 ### Force recompute telemetry cache
